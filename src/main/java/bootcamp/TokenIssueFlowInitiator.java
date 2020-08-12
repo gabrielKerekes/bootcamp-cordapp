@@ -8,6 +8,8 @@ import net.corda.core.transactions.TransactionBuilder;
 import net.corda.core.utilities.ProgressTracker;
 import net.corda.core.contracts.CommandData;
 
+import java.util.ArrayList;
+
 import static java.util.Collections.singletonList;
 
 @InitiatingFlow
@@ -40,14 +42,16 @@ public class TokenIssueFlowInitiator extends FlowLogic<SignedTransaction> {
          *         TODO 1 - Create our TokenState to represent on-ledger tokens!
          * ===========================================================================*/
         // We create our new TokenState.
-        TokenState tokenState = null;
-
+        TokenState tokenState = new TokenState(issuer, owner, amount);
+        CommandData commandData = new TokenContract.Commands.Issue();
 
         /* ============================================================================
          *      TODO 3 - Build our token issuance transaction to update the ledger!
          * ===========================================================================*/
         // We build our transaction.
-        TransactionBuilder transactionBuilder = null;
+        TransactionBuilder transactionBuilder = new TransactionBuilder(notary);
+        transactionBuilder.addOutputState(tokenState);
+        transactionBuilder.addCommand(commandData, issuer.getOwningKey(), owner.getOwningKey());
 
         /* ============================================================================
          *          TODO 2 - Write our TokenContract to control token issuance!
@@ -55,15 +59,15 @@ public class TokenIssueFlowInitiator extends FlowLogic<SignedTransaction> {
         // We check our transaction is valid based on its contracts.
         transactionBuilder.verify(getServiceHub());
 
-        FlowSession session = initiateFlow(owner);
+        // FlowSession session = initiateFlow(owner);
 
         // We sign the transaction with our private key, making it immutable.
         SignedTransaction signedTransaction = getServiceHub().signInitialTransaction(transactionBuilder);
 
         // The counterparty signs the transaction
-        SignedTransaction fullySignedTransaction = subFlow(new CollectSignaturesFlow(signedTransaction, singletonList(session)));
+        // SignedTransaction fullySignedTransaction = subFlow(new CollectSignaturesFlow(signedTransaction, singletonList(session)));
 
         // We get the transaction notarised and recorded automatically by the platform.
-        return subFlow(new FinalityFlow(fullySignedTransaction, singletonList(session)));
+        return subFlow(new FinalityFlow(signedTransaction, new ArrayList<FlowSession>()));
     }
 }
